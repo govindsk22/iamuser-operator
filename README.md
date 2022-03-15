@@ -16,7 +16,7 @@ chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
 
 mkdir -p ~/goperator/iamuser
 cd ~/goperator/iamuser
-kubebuilder init --domain govind.dev --repo govind.dev/iamuser
+kubebuilder init --domain govind.kv --repo govind.kv/iamuser
 ```
 ### 3. Create an API
  ```
