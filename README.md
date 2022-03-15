@@ -33,20 +33,21 @@ y
 ```
 ### 4. Modify the spec and status structs as required in api/v1alpha1/types.go
 
-```type IamUserSpec struct{
-#add the spec fields here
+```
+type IamUserSpec struct{
+  #add the spec fields here
 }
 ```
 ```
 type IamUserStatus struct {
-#add the status fields here
+  #add the status fields here
 }
 ```
 
 ### 5. Add the reconcilation logic in the Reconcile method inside controllers/iamuser_controller.go
 ```
 func (r *IamUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-#add the reconcilation logic here
+  #add the reconcilation logic here
 }
 
 ```
