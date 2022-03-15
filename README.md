@@ -1,4 +1,4 @@
-# iamuser-operator
+# iamuser-operator-demo
 
 ## Steps
 ### 1. Install kubebuilder
