@@ -1,0 +1,15 @@
+domain: govind.dev
+layout:
+- go.kubebuilder.io/v3
+projectName: operator
+repo: govind.dev/iamuser
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: govind.dev
+  kind: IamUser
+  path: govind.dev/iamuser/api/v1alpha1
+  version: v1alpha1
+version: "3"

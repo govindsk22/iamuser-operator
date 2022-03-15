@@ -1,0 +1,24 @@
+# permissions for end users to edit iamusers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: iamuser-editor-role
+rules:
+- apiGroups:
+  - govind.dev
+  resources:
+  - iamusers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - govind.dev
+  resources:
+  - iamusers/status
+  verbs:
+  - get
