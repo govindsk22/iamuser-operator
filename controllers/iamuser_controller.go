@@ -63,25 +63,14 @@ func (r *IamUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		logErr("Couldnt fetch object", err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	//check for user deletion
 	myfinalizer := "iamusers.govind.dev/finalizer"
-	if user.ObjectMeta.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(&user, myfinalizer) {
-			controllerutil.AddFinalizer(&user, myfinalizer)
-			if err := r.Update(ctx, &user); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	} else {
-		if controllerutil.ContainsFinalizer(&user, myfinalizer) {
-			if err := r.DeleteUserReconcile(ctx,&user,req,l); err != nil {
-				return ctrl.Result{}, err
-			}
-			controllerutil.RemoveFinalizer(&user, myfinalizer)
-			if err := r.Update(ctx, &user); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+	err = r.checkDeletion(myfinalizer,&user,ctx,l)
+	if err!= nil{
+		return ctrl.Result{}, err
 	}
+	//check for user creation
 	if !user.Status.Usercreated{
 		err = r.CreateUserReconcile(ctx, &user, l)
 		if err != nil {
@@ -89,6 +78,8 @@ func (r *IamUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			return ctrl.Result{}, err
 		}
 	}
+
+	//check for user updation
 	if user.Status.Usercreated && user.Spec.Username != user.Status.Username {
 		err = r.UpdateUserReconcile(ctx, &user, l)
 		if err != nil {
@@ -110,12 +101,6 @@ func logErr(msg string, err error) {
 	fmt.Println(msg, "::", err.Error())
 }
 
-// func (r *IamUserReconciler) deleteExternalResources(user *govinddevv1alpha1.IamUser) error {
-// 	fmt.Println("We are in delete external requests")
-// 	fmt.Println(user.Spec.Username)
-	
-// 	return nil
-// }
 
 func (r *IamUserReconciler) CreateUserReconcile(ctx context.Context, user *govinddevv1alpha1.IamUser, l logr.Logger) error {
 	l.Info("It's a CREATE request")
@@ -151,21 +136,6 @@ func (r *IamUserReconciler) CreateUserReconcile(ctx context.Context, user *govin
 		l.Error(err, "User with the same name already exists")
 		return nil
 	}
-	// err = CreateIamUser(svc, user, l)
-	// if err != nil {
-	// 	aerr, ok := err.(awserr.Error)
-	// 	if ok {
-	// 		if aerr.Code() == iam.ErrCodeEntityAlreadyExistsException {
-	// 			l.Error(err, "User with the same name already exists")
-	// 			return nil
-	// 		}
-	// 	}
-	// 	user.Status.Usercreated = false
-	// 	user.Status.Username = user.Spec.Username
-	// 	r.Status().Update(ctx, user)
-	// 	return err
-	// }
-	
 	return nil
 }
 
@@ -204,25 +174,17 @@ func (r *IamUserReconciler) UpdateUserReconcile(ctx context.Context, user *govin
 		l.Error(err, "User with the same name already exists")
 		return nil
 	}
-	// err = UpdateIamUser(svc, user, l)
-	// if err != nil {
-	// 	return err
-	// }
-	// user.Status.Usercreated = true
-	// user.Status.Username = user.Spec.Username
-	// r.Status().Update(ctx, user)
-	// l.Info("USER UPDATED")
 	return nil
 }
 
-func (r *IamUserReconciler) DeleteUserReconcile(ctx context.Context, user *govinddevv1alpha1.IamUser, req ctrl.Request, l logr.Logger) error {
+func (r *IamUserReconciler) DeleteUserReconcile(ctx context.Context, user *govinddevv1alpha1.IamUser,l logr.Logger) error {
 	l.Info("It's a DELETE request")
 	svc, err := AwsIamSession(l)
 	if err != nil {
 		return err
 	}
 	fmt.Println("User to be deleted : ", user.Spec.Username)
-	err = DeleteIamUser(svc, user, l, req)
+	err = DeleteIamUser(svc, user, l)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok {
@@ -241,7 +203,6 @@ func (r *IamUserReconciler) DeleteUserReconcile(ctx context.Context, user *govin
 func (r *IamUserReconciler) PrintList(ctx context.Context, l logr.Logger) {
 	userlist := govinddevv1alpha1.IamUserList{}
 	r.List(ctx, &userlist)
-	fmt.Println()
 	for _, u := range userlist.Items {
 		fmt.Println(u.Name, u.GetCreationTimestamp())
 	}
@@ -252,14 +213,13 @@ func CreateIamUser(svc *iam.IAM, user *govinddevv1alpha1.IamUser, l logr.Logger)
 		UserName: &user.Spec.Username,
 	})
 	if err != nil {
-
 		return err
 	}
 	user.Status.UserArn = *userCreate.User.Arn
 	return nil
 }
 
-func DeleteIamUser(svc *iam.IAM, user *govinddevv1alpha1.IamUser, l logr.Logger, req ctrl.Request) error {
+func DeleteIamUser(svc *iam.IAM, user *govinddevv1alpha1.IamUser, l logr.Logger) error {
 
 	_, err := svc.DeleteUser(&iam.DeleteUserInput{
 		UserName: &user.Spec.Username,
@@ -292,4 +252,26 @@ func AwsIamSession(l logr.Logger) (*iam.IAM, error) {
 	}
 	svc := iam.New(sess)
 	return svc, nil
+}
+
+func (r *IamUserReconciler) checkDeletion(myfinalizer string,user *govinddevv1alpha1.IamUser,ctx context.Context,l logr.Logger) error{
+	if user.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(user, myfinalizer) {
+			controllerutil.AddFinalizer(user, myfinalizer)
+			if err := r.Update(ctx, user); err != nil {
+				return  err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(user, myfinalizer) {
+			if err := r.DeleteUserReconcile(ctx,user,l); err != nil {
+				return err
+			}
+			controllerutil.RemoveFinalizer(user, myfinalizer)
+			if err := r.Update(ctx, user); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

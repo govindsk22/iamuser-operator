@@ -1,0 +1,34 @@
+Scheme
+-------
+
+Package scheme contains utilities for gradually building Schemes, which contain information associating Go types with Kubernetes groups, versions, and kinds.
+Each API group should define a utility function called AddToScheme for adding its types to a Scheme.
+
+
+Any type that's registered to a Scheme must implement Object interface.
+
+-----------------------------------------------------------------------
+
+Builder builds a new Scheme for mapping go types to Kubernetes GroupVersionKinds.
+
+1)Register() adds one or more objects to the SchemeBuilder so they can be added to a Scheme.
+
+2)AddToScheme() adds all registered types to that scheme
+
+* AddKnownTypes registers all types passed in 'types' as being members of version 'version'.
+All objects passed to types should be pointers to structs. The name that go reports for
+the struct becomes the "kind" field when encoding. Version may not be empty - use the
+APIVersionInternal constant if you have a type that does not have a formal version. -- apimachinery/runtime/scheme
+
+* AddToGroupVersion registers common meta types into schemas. -- apimachinery/apis/meta/v1/register.go
+
+------------------------------------------------
+
+1.when register is run a schemebuilder function is registered into the builder.schemebuilder.
+func(scheme *runtime.Scheme) error {
+		scheme.AddKnownTypes(bld.GroupVersion, object...)
+		metav1.AddToGroupVersion(scheme, bld.GroupVersion)
+		return nil
+	}
+
+functn takes in a scheme as argument.

@@ -15,7 +15,14 @@ spec:
     singular: iamuser
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.usercreated
+      name: User Created
+      type: boolean
+    - jsonPath: .status.userarn
+      name: User Arn
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: IamUser is the Schema for the iamusers API
@@ -33,7 +40,6 @@ spec:
           metadata:
             type: object
           spec:
-            description: IamUserSpec defines the desired state of IamUser
             properties:
               username:
                 type: string

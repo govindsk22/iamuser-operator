@@ -24,7 +24,10 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // IamUserSpec defines the desired state of IamUser
-// +kubebuilder:validation:Required
+
+
+
+
 type IamUserSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -43,7 +46,8 @@ type IamUserStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-
+//+kubebuilder:printcolumn:name="User Created",type=boolean,JSONPath=`.status.usercreated`
+//+kubebuilder:printcolumn:name="User Arn",type=string,JSONPath=`.status.userarn`
 // IamUser is the Schema for the iamusers API
 type IamUser struct {
 	metav1.TypeMeta   `json:",inline"`
