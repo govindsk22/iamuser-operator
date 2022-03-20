@@ -17,10 +17,13 @@ spec:
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.usercreated
-      name: User Created
+      name: UserCreated
       type: boolean
     - jsonPath: .status.userarn
-      name: User Arn
+      name: UserArn
+      type: string
+    - jsonPath: .spec.role
+      name: UserRole
       type: string
     name: v1alpha1
     schema:
@@ -41,9 +44,15 @@ spec:
             type: object
           spec:
             properties:
+              role:
+                enum:
+                - admin
+                - readonly
+                type: string
               username:
                 type: string
             required:
+            - role
             - username
             type: object
           status:

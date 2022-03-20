@@ -4,3 +4,4 @@ metadata:
   name: iamuser-sample
 spec:
  username: govind-from-operator
+ role: admin

@@ -24,7 +24,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/go-logr/logr"
+	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
+	//v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -123,6 +127,7 @@ func (r *IamUserReconciler) CreateUserReconcile(ctx context.Context, user *govin
 					r.Status().Update(ctx, user)
 					return err
 				}
+				r.UpdateCM(user,ctx)
 				user.Status.Usercreated = true
 				user.Status.Username = user.Spec.Username
 				r.Status().Update(ctx, user)
@@ -133,6 +138,8 @@ func (r *IamUserReconciler) CreateUserReconcile(ctx context.Context, user *govin
 		return err
 	}
 	if existingUser != nil {
+		user.Status.Usercreated = false
+		r.Status().Update(ctx, user)
 		l.Error(err, "User with the same name already exists")
 		return nil
 	}
@@ -161,6 +168,7 @@ func (r *IamUserReconciler) UpdateUserReconcile(ctx context.Context, user *govin
 					r.Status().Update(ctx, user)
 					return err
 				}
+				r.UpdateCM(user,ctx)
 				user.Status.Usercreated = true
 				user.Status.Username = user.Spec.Username
 				r.Status().Update(ctx, user)
@@ -196,6 +204,7 @@ func (r *IamUserReconciler) DeleteUserReconcile(ctx context.Context, user *govin
 		}
 		return err
 	}
+	r.DeleteCM(user,ctx)
 	l.Info("USER DELETED")
 	return nil
 }
@@ -274,4 +283,85 @@ func (r *IamUserReconciler) checkDeletion(myfinalizer string,user *govinddevv1al
 		}
 	}
 	return nil
+}
+
+func (r *IamUserReconciler) UpdateCM(user *govinddevv1alpha1.IamUser,ctx context.Context){
+	var cm corev1.ConfigMap
+	r.Client.Get(ctx,types.NamespacedName{
+		Name: "aws-auth",
+		Namespace: "kube-system",
+	},
+	&cm)
+	type cmuser struct {
+		Arn string `yaml:"userarn,omitempty"`
+		Username string `yaml:"username,omitempty"`
+		Groups []string	`group:"groups,omitempty"`
+	}
+	type cmuserlist struct {
+		user []string
+	}
+	var ul []cmuser
+	
+	err := yaml.Unmarshal([]byte(cm.Data["mapUsers"]),&ul)
+	if err!=nil{
+		logErr("Couldnt unmarshall yaml",err)
+	}
+	newUser := cmuser{
+		Arn: user.Status.UserArn,
+		Username: user.Spec.Username,
+		Groups: []string{user.Spec.Role},
+	}
+	ul = append(ul, newUser)
+	fmt.Println(ul)
+	updatedCm,err := yaml.Marshal(&ul)
+	if err!=nil{
+		fmt.Println(err.Error())
+	}
+	cm.Data["mapUsers"] = string(updatedCm)
+
+	err = r.Client.Update(ctx,&cm)
+	if err!=nil{
+		logErr("Couldnt update config map",err)
+	}
+
+}
+
+func (r *IamUserReconciler) DeleteCM(user *govinddevv1alpha1.IamUser,ctx context.Context){
+	var cm corev1.ConfigMap
+	r.Client.Get(ctx,types.NamespacedName{
+		Name: "aws-auth",
+		Namespace: "kube-system",
+	},
+	&cm)
+	type cmuser struct {
+		Arn string `yaml:"userarn,omitempty"`
+		Username string `yaml:"username,omitempty"`
+		Groups []string	`group:"groups,omitempty"`
+	}
+	type cmuserlist struct {
+		user []string
+	}
+	var ul []cmuser
+	
+	err := yaml.Unmarshal([]byte(cm.Data["mapUsers"]),&ul)
+	if err!=nil{
+		logErr("Couldnt unmarshall yaml",err)
+	}
+	var deletionIndex int
+	for k,v := range ul{
+		if v.Username == user.Spec.Username{
+			deletionIndex = k
+			break
+		}
+	}
+	ul = append(ul[:deletionIndex],ul[deletionIndex+1:]...)
+	updatedCm,err := yaml.Marshal(&ul)
+	if err !=nil{
+			fmt.Println(err.Error())
+		}
+	cm.Data["mapUsers"] = string(updatedCm)
+	err = r.Client.Update(ctx,&cm)
+	if err!=nil{
+		logErr("Couldnt update config map",err)
+	}
 }

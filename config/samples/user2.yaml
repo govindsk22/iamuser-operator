@@ -4,4 +4,5 @@ metadata:
   name: iamuser-1
 spec:
   # TODO(user): Add fields here
-  username: ss
+  username: govind-from-operator
+  role: readonly

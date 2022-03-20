@@ -33,6 +33,8 @@ type IamUserSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Username string `json:"username"`
+	// +kubebuilder:validation:Enum=admin;readonly
+	Role string `json:"role"`
 }
 
 // IamUserStatus defines the observed state of IamUser
@@ -46,8 +48,9 @@ type IamUserStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="User Created",type=boolean,JSONPath=`.status.usercreated`
-//+kubebuilder:printcolumn:name="User Arn",type=string,JSONPath=`.status.userarn`
+//+kubebuilder:printcolumn:name="UserCreated",type=boolean,JSONPath=`.status.usercreated`
+//+kubebuilder:printcolumn:name="UserArn",type=string,JSONPath=`.status.userarn`
+//+kubebuilder:printcolumn:name="UserRole",type=string,JSONPath=`.spec.role`
 // IamUser is the Schema for the iamusers API
 type IamUser struct {
 	metav1.TypeMeta   `json:",inline"`
